@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Biblioteca</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; }
+    h1 { background: #2c3e50; color: white; padding: 15px; margin: 0 0 20px; }
+    h2 { border-bottom: 2px solid #2c3e50; padding-bottom: 5px; }
+    input, select { padding: 6px; margin: 4px; border: 1px solid #ccc; border-radius: 3px; }
+    button { padding: 6px 12px; margin: 4px; background: #2c3e50; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    button:hover { background: #34495e; }
+    button.rojo { background: #c0392b; }
+    button.verde { background: #27ae60; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #2c3e50; color: white; padding: 8px; text-align: left; }
+    td { padding: 8px; border-bottom: 1px solid #ddd; }
+    tr:hover { background: #f5f5f5; }
+    .seccion { margin-bottom: 40px; }
+    #mensaje { padding: 10px; margin: 10px 0; border-radius: 3px; display: none; }
+    .ok  { background: #d4edda; color: #155724; }
+    .err { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+<h1>📚 Sistema de Biblioteca</h1>
+<div id="mensaje"></div>
+
+<!-- LIBROS -->
+<div class="seccion">
+  <h2>Libros</h2>
+  <b>Agregar libro:</b><br>
+  <input id="l-titulo" placeholder="Título" />
+  <select id="l-autor"></select>
+  <input id="l-genero" placeholder="Género" />
+  <input id="l-anio" placeholder="Año" type="number" style="width:70px"/>
+  <input id="l-stock" placeholder="Stock" type="number" value="1" style="width:60px"/>
+  <button onclick="agregarLibro()">Agregar</button>
+  <table>
+    <thead><tr><th>#</th><th>Título</th><th>Autor</th><th>Género</th><th>Año</th><th>Stock</th><th>Acciones</th></tr></thead>
+    <tbody id="tabla-libros"></tbody>
+  </table>
+</div>
+
+<!-- AUTORES -->
+<div class="seccion">
+  <h2>Autores</h2>
+  <b>Agregar autor:</b><br>
+  <input id="a-nombre" placeholder="Nombre" />
+  <input id="a-nac" placeholder="Nacionalidad" />
+  <input id="a-anio" placeholder="Año nacimiento" type="number" style="width:130px"/>
+  <button onclick="agregarAutor()">Agregar</button>
+  <table>
+    <thead><tr><th>#</th><th>Nombre</th><th>Nacionalidad</th><th>Año nac.</th><th>Acciones</th></tr></thead>
+    <tbody id="tabla-autores"></tbody>
+  </table>
+</div>
+
+<!-- PRÉSTAMOS -->
+<div class="seccion">
+  <h2>Préstamos</h2>
+  <b>Registrar préstamo:</b><br>
+  <input id="p-lector" placeholder="Nombre del lector" />
+  <select id="p-libro"></select>
+  <button onclick="agregarPrestamo()">Registrar</button>
+  <table>
+    <thead><tr><th>#</th><th>Lector</th><th>Libro</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody id="tabla-prestamos"></tbody>
+  </table>
+</div>
+
+<script>
+function msg(texto, tipo) {
+  const d = document.getElementById("mensaje");
+  d.textContent = texto;
+  d.className = tipo;
+  d.style.display = "block";
+  setTimeout(() => d.style.display = "none", 3000);
+}
+
+async function get(url) { return (await fetch(url)).json(); }
+async function post(url, data) {
+  const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
+  return [r.ok, await r.json()];
+}
+async function put(url, data) {
+  const r = await fetch(url, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
+  return [r.ok, await r.json()];
+}
+async function del(url) {
+  const r = await fetch(url, { method:"DELETE" });
+  return [r.ok, await r.json()];
+}
+
+// LIBROS
+async function cargarLibros() {
+  const libros = await get("/libros");
+  document.getElementById("tabla-libros").innerHTML = libros.map(l => `
+    <tr>
+      <td>${l.id}</td><td>${l.titulo}</td><td>${l.autor_nombre}</td>
+      <td>${l.genero||"-"}</td><td>${l.anio||"-"}</td><td>${l.stock}</td>
+      <td><button class="rojo" onclick="eliminarLibro(${l.id})">Eliminar</button></td>
+    </tr>`).join("");
+  document.getElementById("p-libro").innerHTML = libros.filter(l=>l.stock>0)
+    .map(l=>`<option value="${l.id}">${l.titulo}</option>`).join("");
+}
+async function agregarLibro() {
+  const [ok,res] = await post("/libros", {
+    titulo: document.getElementById("l-titulo").value,
+    autor_id: parseInt(document.getElementById("l-autor").value),
+    genero: document.getElementById("l-genero").value,
+    anio: parseInt(document.getElementById("l-anio").value)||null,
+    stock: parseInt(document.getElementById("l-stock").value)||1,
+  });
+  ok ? (msg("Libro agregado ✅","ok"), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+async function eliminarLibro(id) {
+  if(!confirm("¿Eliminar este libro?")) return;
+  const [ok,res] = await del(`/libros/${id}`);
+  ok ? (msg(res.mensaje,"ok"), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+
+// AUTORES
+async function cargarAutores() {
+  const autores = await get("/autores");
+  document.getElementById("tabla-autores").innerHTML = autores.map(a => `
+    <tr>
+      <td>${a.id}</td><td>${a.nombre}</td><td>${a.nacionalidad||"-"}</td><td>${a.anio_nacimiento||"-"}</td>
+      <td><button class="rojo" onclick="eliminarAutor(${a.id})">Eliminar</button></td>
+    </tr>`).join("");
+  document.getElementById("l-autor").innerHTML = autores
+    .map(a=>`<option value="${a.id}">${a.nombre}</option>`).join("");
+}
+async function agregarAutor() {
+  const [ok,res] = await post("/autores", {
+    nombre: document.getElementById("a-nombre").value,
+    nacionalidad: document.getElementById("a-nac").value,
+    anio_nacimiento: parseInt(document.getElementById("a-anio").value)||null,
+  });
+  ok ? (msg("Autor agregado ✅","ok"), cargarAutores()) : msg("Error: "+res.error,"err");
+}
+async function eliminarAutor(id) {
+  if(!confirm("¿Eliminar este autor?")) return;
+  const [ok,res] = await del(`/autores/${id}`);
+  ok ? (msg(res.mensaje,"ok"), cargarAutores(), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+
+// PRÉSTAMOS
+async function cargarPrestamos() {
+  const prestamos = await get("/prestamos");
+  document.getElementById("tabla-prestamos").innerHTML = prestamos.map(p => `
+    <tr>
+      <td>${p.id}</td><td>${p.lector}</td><td>${p.libro_titulo}</td>
+      <td>${p.fecha_prestamo}</td><td>${p.devuelto?"✅ Devuelto":"⏳ Pendiente"}</td>
+      <td>
+        ${!p.devuelto?`<button class="verde" onclick="devolver(${p.id})">Devolver</button>`:""}
+        <button class="rojo" onclick="eliminarPrestamo(${p.id})">Eliminar</button>
+      </td>
+    </tr>`).join("");
+}
+async function agregarPrestamo() {
+  const [ok,res] = await post("/prestamos", {
+    lector: document.getElementById("p-lector").value,
+    libro_id: parseInt(document.getElementById("p-libro").value),
+  });
+  ok ? (msg("Préstamo registrado ✅","ok"), cargarPrestamos(), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+async function devolver(id) {
+  const [ok,res] = await put(`/prestamos/${id}`, {devuelto:1});
+  ok ? (msg("Libro devuelto ✅","ok"), cargarPrestamos(), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+async function eliminarPrestamo(id) {
+  if(!confirm("¿Eliminar este préstamo?")) return;
+  const [ok,res] = await del(`/prestamos/${id}`);
+  ok ? (msg(res.mensaje,"ok"), cargarPrestamos(), cargarLibros()) : msg("Error: "+res.error,"err");
+}
+
+cargarAutores();
+cargarLibros();
+cargarPrestamos();
+</script>
+</body>
+</html>
