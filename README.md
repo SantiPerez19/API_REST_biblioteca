@@ -4,6 +4,10 @@ Proyecto final de la materia de **Desarrollo de Sistemas IV**.
 
 API REST para la gestión de una biblioteca, construida con **Flask** y **SQLite**. Incluye una interfaz web sencilla para administrar autores, libros y préstamos.
 
+## Captura
+
+![Interfaz web del sistema de biblioteca](docs/captura.png)
+
 ## Descripción general
 
 El sistema expone una API REST y una página web desde la que se realizan operaciones **CRUD** sobre tres entidades:
